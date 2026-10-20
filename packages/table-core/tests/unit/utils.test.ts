@@ -7,8 +7,41 @@ import {
   functionalUpdate,
   getFunctionNameInfo,
   isFunction,
+  memo,
   tableMemo,
 } from '../../src/utils'
+
+describe('memo', () => {
+  test('retries after the compute function throws instead of returning a stale result', () => {
+    let shouldThrow = false
+    let calls = 0
+    const memoized = memo({
+      memoDeps: (token?: string) => [token],
+      fn: (token?: string) => {
+        calls += 1
+        if (shouldThrow) {
+          throw new Error('boom')
+        }
+        return token
+      },
+    })
+
+    expect(memoized('first')).toBe('first')
+    expect(calls).toBe(1)
+
+    shouldThrow = true
+    expect(() => memoized('second')).toThrow('boom')
+    expect(calls).toBe(2)
+
+    shouldThrow = false
+    // The failed attempt must not be cached. Same deps should recompute.
+    expect(memoized('second')).toBe('second')
+    expect(calls).toBe(3)
+
+    expect(memoized('second')).toBe('second')
+    expect(calls).toBe(3)
+  })
+})
 
 describe('tableMemo', () => {
   test('does not schedule after-update work when no callback is provided', () => {

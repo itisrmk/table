@@ -327,10 +327,13 @@ export const memo = <TDeps extends ReadonlyArray<any>, TDepArgs, TResult>({
       return result!
     }
 
-    deps = newDeps
-
     onBeforeUpdate?.()
-    result = fn(...(newDeps ?? ([] as any)))
+    // Commit the dependency tuple only after `fn` succeeds. Recording it
+    // first caches the failure: the next call with the same deps would return
+    // the previous result instead of retrying.
+    const nextResult = fn(...(newDeps ?? ([] as any)))
+    deps = newDeps
+    result = nextResult
     onAfterUpdate?.(result)
 
     return result
